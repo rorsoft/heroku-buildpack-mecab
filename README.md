@@ -20,11 +20,15 @@ N.B. This buildpack points to the file `libmecab-heroku.tar.gz` which is current
 
 Heroku buildpack: Ruby
 ======================
+=======
+# Heroku Buildpack for Ruby
+![ruby](https://cloud.githubusercontent.com/assets/51578/13712725/3c6b3368-e793-11e5-83c1-728440111358.png)
 
-This is a [Heroku buildpack](http://devcenter.heroku.com/articles/buildpacks) for Ruby, Rack, and Rails apps. It uses [Bundler](http://gembundler.com) for dependency management.
+This is a [Heroku Buildpack](http://devcenter.heroku.com/articles/buildpacks) for Ruby, Rack, and Rails apps. It uses [Bundler](https://bundler.io) for dependency management.
 
-Usage
------
+This buildpack requires 64-bit Linux.
+
+## Usage
 
 ### Ruby
 
@@ -33,9 +37,9 @@ Example Usage:
     $ ls
     Gemfile Gemfile.lock
 
-    $ heroku create --stack cedar --buildpack https://github.com/heroku/heroku-buildpack-ruby.git
+    $ heroku create --buildpack heroku/ruby
 
-    $ git push heroku master
+    $ git push heroku main
     ...
     -----> Heroku receiving push
     -----> Fetching custom buildpack
@@ -51,9 +55,23 @@ Example Usage:
            Procfile declares types -> (none)
            Default types for Ruby  -> console, rake
 
-The buildpack will detect your app as Ruby if it has a `Gemfile` and `Gemfile.lock` files in the root directory. It will then proceed to run `bundle install` after setting up the appropriate environment for [ruby](http://ruby-lang.org) and [Bundler](http://gembundler.com).
+The buildpack will detect your app as Ruby if it has a `Gemfile` and `Gemfile.lock` files in the root directory. It will then proceed to run `bundle install` after setting up the appropriate environment for [ruby](http://ruby-lang.org) and [Bundler](https://bundler.io).
 
-#### Run the Tests
+## Documentation
+
+For more information about using Ruby and buildpacks on Heroku, see these Dev Center articles:
+
+- [Heroku Ruby Support](https://devcenter.heroku.com/articles/ruby-support)
+- [Getting Started with Ruby on Heroku](https://devcenter.heroku.com/articles/getting-started-with-ruby)
+- [Getting Started with Rails 4 on Heroku](https://devcenter.heroku.com/articles/getting-started-with-rails4)
+- [Buildpacks](https://devcenter.heroku.com/articles/buildpacks)
+- [Buildpack API](https://devcenter.heroku.com/articles/buildpack-api)
+
+## Hacking
+
+To use this buildpack, fork it on Github.  Push up changes to your fork, then create a test app with `--buildpack <your-github-url>` and push to it.
+
+### Testing
 
 The tests on this buildpack are written in Rspec to allow the use of
 `focused: true`. Parallelization of testing is provided by
@@ -62,21 +80,12 @@ number of processes and running a different test file in each process,
 it does not parallelize tests within a test file. To run the tests: clone the repo, then `bundle install` then clone the test fixtures by running:
 
 ```sh
-$ hatchet install
+$ bundle exec hatchet install
 ```
-
-Now run the tests:
-
-```sh
-$ bundle exec parallel_rspec -n 6 spec/
-```
-
-If you don't want to run them in parallel you can still:
 
 ```sh
 $ bundle exec rake spec
 ```
-
 Now go take a nap or something for a really long time.
 
 #### Bundler

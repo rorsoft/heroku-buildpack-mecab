@@ -1,43 +1,60 @@
 require 'rspec/core'
 require 'hatchet'
 require 'fileutils'
+require 'stringio'
 require 'hatchet'
 require 'rspec/retry'
 require 'language_pack'
+require 'language_pack/shell_helpers'
 
-require 'language_pack'
+ENV["HATCHET_BUILDPACK_BASE"] ||= "https://github.com/heroku/heroku-buildpack-ruby"
 
 ENV['RACK_ENV'] = 'test'
 
+DEFAULT_STACK = 'heroku-20'
+
+
+def hatchet_path(path = "")
+  Pathname(__FILE__).join("../../repos").expand_path.join(path)
+end
+
+puts hatchet_path
+
+require 'cutlass'
+
+RUBY_BUILDPACK = Cutlass::LocalBuildpack.new(directory: Pathname(__dir__).join(".."))
+Cutlass.config do |config|
+  config.default_builder = "heroku/buildpacks:20"
+
+  # Where do your test fixtures live?
+  config.default_repo_dirs = hatchet_path("").children
+
+  # Where does your buildpack live?
+  # Can be a directory or a Cutlass:LocalBuildpack instance
+  config.default_buildpack_paths = [RUBY_BUILDPACK]
+end
+
 RSpec.configure do |config|
-  config.filter_run focused: true unless ENV['IS_RUNNING_ON_TRAVIS']
+  config.filter_run focused: true unless ENV['IS_RUNNING_ON_CI']
   config.run_all_when_everything_filtered = true
   config.alias_example_to :fit, focused: true
   config.full_backtrace      = true
   config.verbose_retry       = true # show retry status in spec process
-  config.default_retry_count = 2 if ENV['IS_RUNNING_ON_TRAVIS'] # retry all tests that fail again
+  config.default_retry_count = 2 if ENV['IS_RUNNING_ON_CI'] # retry all tests that fail again
+  config.example_status_persistence_file_path = 'spec/examples.txt'
 
   config.expect_with :rspec do |c|
+    c.max_formatted_output_length = Float::INFINITY
     c.syntax = :expect
   end
-  config.mock_with :none
-end
-
-def git_repo
-  "https://github.com/heroku/heroku-buildpack-ruby.git"
-end
-
-def add_database(app, heroku)
-  Hatchet::RETRIES.times.retry do
-    heroku.post_addon(app.name, 'heroku-postgresql:hobby-dev')
-    _, value = heroku.get_config_vars(app.name).body.detect {|key, value| key.match(/HEROKU_POSTGRESQL_[A-Z]+_URL/) }
-    heroku.put_config_vars(app.name, 'DATABASE_URL' => value)
-  end
+  config.mock_with :nothing
+  config.include LanguagePack::ShellHelpers
 end
 
 def successful_body(app, options = {})
   retry_limit = options[:retry_limit] || 50
-  Excon.get("http://#{app.name}.herokuapp.com", :idempotent => true, :expects => 200, :retry_limit => retry_limit).body
+  url = "http://#{app.name}.herokuapp.com"
+  Excon.get(url, :idempotent => true, :expects => 200, :retry_limit => retry_limit).body
 end
 
 def create_file_with_size_in(size, dir)
@@ -46,10 +63,46 @@ def create_file_with_size_in(size, dir)
   Pathname.new name
 end
 
+if ENV['TRAVIS']
+  # Don't execute tests against "merge" commits
+  exit 0 if ENV['TRAVIS_PULL_REQUEST'] != 'false' && ENV['TRAVIS_BRANCH'] == 'master'
+end
 
-ReplRunner.register_commands(:console)  do |config|
-  config.terminate_command "exit"          # the command you use to end the 'rails console'
-  config.startup_timeout 60                # seconds to boot
-  config.return_char "\n"                  # the character that submits the command
-  config.sync_stdout "STDOUT.sync = true"  # force REPL to not buffer standard out
+def buildpack_path
+  File.expand_path(File.join("../.."), __FILE__)
+end
+
+def fixture_path(path)
+  Pathname.new(__FILE__).join("../fixtures").expand_path.join(path)
+end
+
+def rails_lts_config
+  { 'BUNDLE_GEMS__RAILSLTS__COM' => ENV["RAILS_LTS_CREDS"] }
+end
+
+def hatchet_path(path = "")
+  Pathname.new(__FILE__).join("../../repos").expand_path.join(path)
+end
+
+def dyno_status(app, ps_name = "web")
+  app
+    .api_rate_limit.call
+    .dyno
+    .list(app.name)
+    .detect {|x| x["type"] == ps_name }
+end
+
+def wait_for_dyno_boot(app, ps_name = "web", sleep_val = 1)
+  while ["starting", "restarting"].include?(dyno_status(app, ps_name)["state"])
+    sleep sleep_val
+  end
+  dyno_status(app, ps_name)
+end
+
+def web_boot_status(app)
+  wait_for_dyno_boot(app)["state"]
+end
+
+def root_dir
+  Pathname(__dir__).join("..")
 end

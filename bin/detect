@@ -1,11 +1,19 @@
-#!/usr/bin/env ruby
+#!/bin/sh
 
-require 'pathname'
+if [ -z "$CNB_STACK_ID" ]; then
+  # v2 API
+  APP_DIR=$1
+else
+  PLATFORM_DIR=$1
+  PLAN=$2
+  # working is the cwd now
+  # v3 API
+  APP_DIR=$(pwd)
+fi
 
-if Pathname.new(ARGV.first).join("Gemfile").exist?
-  puts "Ruby"
+if [ -f "$APP_DIR/Gemfile" ]; then
+  echo "Ruby"
   exit 0
 else
-  puts "no"
-  exit 1
-end
+  exit 100
+fi
