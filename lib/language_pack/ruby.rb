@@ -88,7 +88,6 @@ WARNING
     warn_bundler_upgrade
     warn_bad_binstubs
     install_ruby(slug_vendor_ruby, build_ruby_path)
-    install_jvm
     setup_language_pack_environment(
       ruby_layer_path: File.expand_path("."),
       gem_layer_path: File.expand_path("."),
