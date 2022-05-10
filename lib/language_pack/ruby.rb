@@ -96,6 +96,7 @@ WARNING
     )
     allow_git do
       install_mecab
+      FileUtils.mkdir_p('/app/vendor')
       run("cp -R vendor/mecab /app/vendor/mecab")
       ENV['PATH'] += ":/app/vendor/mecab/bin"
       ENV['CFLAGS'] = "-I/app/vendor/mecab/include"
